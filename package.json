@@ -1,0 +1,14 @@
+{
+  "name": "sw2-battleships-backend",
+  "version": "1.0.0",
+  "description": "SW2 Battleships backend API",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  }
+}
