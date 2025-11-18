@@ -1,36 +1,39 @@
-// server.js – SW2 Battleships backend
-
 import express from "express";
 import cors from "cors";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-
-// Allow JSON bodies + CORS from your EdgeOne site
 app.use(cors());
 app.use(express.json());
 
-// ----- GAME STATE -----
+// --- GAME CONFIG ---
 const ROWS = 10;
 const COLS = 10;
 
-function makeEmptyState() {
+// 0 = empty, 1 = hit, 2 = miss, 3 = sunk
+let gameState;
+
+// Create a fresh, empty board
+function createEmptyState() {
   return {
-    cellStates: Array.from({ length: ROWS }, () => Array(COLS).fill(0)), // 0=empty,1=hit,2=miss,3=sunk
-    sunkShips: [],
+    cellStates: Array.from({ length: ROWS }, () => Array(COLS).fill(0)),
+    sunkShips: [], // optional, for later
   };
 }
 
-let gameState = makeEmptyState();
+function resetState() {
+  gameState = createEmptyState();
+}
 
-// ----- ROUTES -----
+resetState();
 
-// Simple root check
+// --- ROUTES ---
+
+// Simple root message so you know it's alive
 app.get("/", (req, res) => {
   res.send("SW2 Battleships Backend Running");
 });
 
-// Get current board
+// Get current state
 app.get("/state", (req, res) => {
   res.json({ success: true, gameState });
 });
@@ -39,51 +42,57 @@ app.get("/state", (req, res) => {
 app.post("/shot", (req, res) => {
   const { row, col, result } = req.body || {};
 
-  // Basic validation
+  // Validate row/col
   if (
     typeof row !== "number" ||
     typeof col !== "number" ||
-    !["hit", "miss", "sunk"].includes(result)
-  ) {
-    return res
-      .status(400)
-      .json({ success: false, error: "Invalid payload (row/col/result)." });
-  }
-
-  if (
     row < 0 ||
     row >= ROWS ||
     col < 0 ||
-    col >= COLS ||
-    !gameState.cellStates[row]
+    col >= COLS
   ) {
-    return res.status(400).json({ success: false, error: "Out of bounds." });
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid row/col" });
   }
 
-  let code = 0;
-  if (result === "hit") code = 1;
-  if (result === "miss") code = 2;
-  if (result === "sunk") code = 3;
+  // Validate result
+  const normalized = (result || "").toLowerCase();
+  const allowed = ["hit", "miss", "sunk"];
+  if (!allowed.includes(normalized)) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Invalid result" });
+  }
 
-  gameState.cellStates[row][col] = code;
+  // Map result -> numeric value
+  let val = 0;
+  if (normalized === "hit") val = 1;
+  if (normalized === "miss") val = 2;
+  if (normalized === "sunk") val = 3;
 
-  if (code === 3) {
-    const id = `${row}-${col}`;
-    if (!gameState.sunkShips.includes(id)) {
-      gameState.sunkShips.push(id);
+  // Update the cell
+  gameState.cellStates[row][col] = val;
+
+  // Track sunk squares nicely if you want to
+  if (val === 3) {
+    const coordLabel = String.fromCharCode(65 + col) + (row + 1);
+    if (!gameState.sunkShips.includes(coordLabel)) {
+      gameState.sunkShips.push(coordLabel);
     }
   }
 
   return res.json({ success: true, gameState });
 });
 
-// Reset the whole board
+// Reset the entire board
 app.post("/reset", (req, res) => {
-  gameState = makeEmptyState();
+  resetState();
   return res.json({ success: true, gameState });
 });
 
-// ----- START SERVER -----
+// --- START SERVER ---
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`SW2 Battleships backend listening on port ${PORT}`);
 });
