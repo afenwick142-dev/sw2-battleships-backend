@@ -1,5 +1,5 @@
 {
-  "name": "sw2-battleships-backend",
+  "name": "battleships-backend",
   "version": "1.0.0",
   "description": "SW2 Battleships backend API",
   "main": "server.js",
